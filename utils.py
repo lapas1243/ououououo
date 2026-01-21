@@ -1222,6 +1222,7 @@ def init_db():
                 is_human_verified {get_boolean_type()} DEFAULT FALSE,
                 verification_attempts INTEGER DEFAULT 0
             )''')
+            conn.commit()  # CRITICAL: Commit users table immediately
             logger.info(f"✅ Users table created successfully")
             
             # Add referral_code column if it doesn't exist
@@ -1231,6 +1232,7 @@ def init_db():
                 conn.commit()
                 logger.info(f"✅ referral_code column added to users table")
             except Exception as e:
+                conn.rollback()  # Reset transaction state
                 if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
                     logger.info(f"✅ referral_code column already exists in users table")
                 else:
@@ -1364,6 +1366,7 @@ def init_db():
                 added_by BIGINT, added_date TEXT
             )''')
             logger.info(f"✅ Products table created successfully")
+            conn.commit()  # Commit core tables before any ALTER operations
             
             # Note: Additional columns (low_stock_threshold, stock_alerts_enabled, last_stock_alert) 
             # will be added later when needed to avoid startup delays
@@ -1375,6 +1378,7 @@ def init_db():
                 media_type TEXT NOT NULL, file_path TEXT NOT NULL, telegram_file_id TEXT,
                 media_binary BYTEA
             )''')
+            conn.commit()  # Commit product_media before ALTER
             logger.info(f"✅ Product_media table created successfully")
             
             # 🚀  Add media_binary column if it doesn't exist (for existing databases)
@@ -1635,6 +1639,10 @@ def init_db():
                 PRIMARY KEY (reseller_user_id, product_type)
             )''')
             # <<< END ADDED >>>
+            
+            # CRITICAL: Commit ALL tables before INSERT/INDEX operations
+            conn.commit()
+            logger.info("✅ All database tables committed successfully")
 
             # Insert initial welcome messages (only if table was just created or empty - handled by INSERT OR IGNORE)
             initial_templates = [
